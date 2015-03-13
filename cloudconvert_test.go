@@ -27,6 +27,22 @@ func TestCreateProcess(t *testing.T) {
 	assert.NotNil(t, p)
 }
 
+func TestInvalidCreateProcessInputType(t *testing.T) {
+	c, err := New(TEST_KEY)
+	assert.NoError(t, err)
+
+	_, err = c.CreateProcess("invalid-type", "png")
+	assert.IsType(t, ErrCloudConvert{}, err)
+}
+
+func TestInvalidCreateProcessOutputType(t *testing.T) {
+	c, err := New(TEST_KEY)
+	assert.NoError(t, err)
+
+	_, err = c.CreateProcess("pdf", "invalid-type")
+	assert.IsType(t, ErrCloudConvert{}, err)
+}
+
 func TestConvertStream(t *testing.T) {
 	c, err := New(TEST_KEY)
 	assert.NoError(t, err)

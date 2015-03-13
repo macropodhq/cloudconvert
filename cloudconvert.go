@@ -12,10 +12,34 @@ import (
 
 const DEFAULT_API_URL = "https://api.cloudconvert.com"
 
-type ErrInvalidStatusCode error
+type ErrCloudConvert struct {
+	Value string `json:"error"`
+	Code  int    `json:"code"`
+}
+
+func (e ErrCloudConvert) String() string {
+	return fmt.Sprintf("[%d] %s", e.Code, e.Value)
+}
+
+func (e ErrCloudConvert) Error() string {
+	return e.String()
+}
+
+type ErrInvalidStatusCode struct {
+	Expected int
+	Actual   int
+}
+
+func (e ErrInvalidStatusCode) String() string {
+	return fmt.Sprintf("invalid status code; expected %d but got %d", e.Expected, e.Actual)
+}
+
+func (e ErrInvalidStatusCode) Error() string {
+	return e.String()
+}
 
 func invalidStatusCode(expected, actual int) ErrInvalidStatusCode {
-	return ErrInvalidStatusCode(fmt.Errorf("invalid status code; expected %d but got %d", expected, actual))
+	return ErrInvalidStatusCode{expected, actual}
 }
 
 func New(key string) (*Client, error) {
@@ -68,9 +92,17 @@ func (c Client) CreateProcess(inputFormat, outputFormat string) (*Process, error
 	}
 
 	r, err := http.DefaultClient.Post(c.BaseURL+"/process", "application/json", bytes.NewReader(reqJson))
+	if err != nil {
+		return nil, err
+	}
 
 	if r.StatusCode != 200 {
-		return nil, invalidStatusCode(200, r.StatusCode)
+		var e ErrCloudConvert
+		if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
+			return nil, invalidStatusCode(200, r.StatusCode)
+		} else {
+			return nil, e
+		}
 	}
 
 	var res createProcessResponse
@@ -181,7 +213,12 @@ func (p Process) ConvertStream(input io.Reader, filename string, outputFormat st
 	}
 
 	if res.StatusCode != 200 {
-		return nil, invalidStatusCode(200, res.StatusCode)
+		var e ErrCloudConvert
+		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			return nil, invalidStatusCode(200, res.StatusCode)
+		} else {
+			return nil, e
+		}
 	}
 
 	var s ProcessStatus
@@ -204,7 +241,12 @@ func (p Process) Download() (io.ReadCloser, error) {
 	}
 
 	if res.StatusCode != 200 {
-		return nil, invalidStatusCode(200, res.StatusCode)
+		var e ErrCloudConvert
+		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			return nil, invalidStatusCode(200, res.StatusCode)
+		} else {
+			return nil, e
+		}
 	}
 
 	return res.Body, nil
@@ -217,7 +259,12 @@ func (p Process) Status() (*ProcessStatus, error) {
 	}
 
 	if res.StatusCode != 200 {
-		return nil, invalidStatusCode(200, res.StatusCode)
+		var e ErrCloudConvert
+		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			return nil, invalidStatusCode(200, res.StatusCode)
+		} else {
+			return nil, e
+		}
 	}
 
 	var s ProcessStatus
