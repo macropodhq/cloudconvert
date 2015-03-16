@@ -252,6 +252,29 @@ func (p Process) Download() (io.ReadCloser, error) {
 	return res.Body, nil
 }
 
+func (p Process) DownloadOne(f string) (io.ReadCloser, error) {
+	u, err := p.url.Parse("/download/" + p.id + "/" + url.QueryEscape(f))
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := http.Get(u.String())
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != 200 {
+		var e ErrCloudConvert
+		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			return nil, invalidStatusCode(200, res.StatusCode)
+		} else {
+			return nil, e
+		}
+	}
+
+	return res.Body, nil
+}
+
 func (p Process) Status() (*ProcessStatus, error) {
 	res, err := http.Get(p.url.String())
 	if err != nil {
